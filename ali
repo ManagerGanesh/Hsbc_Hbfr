@@ -1,0 +1,101 @@
+
+
+
+ -----FIRST STEP FOR CREATING TABLE IN STAGE
+
+CREATE TABLE usercasestage.CR_CARDS
+(cust_id STRING,
+first_name STRING,	
+last_name STRING,
+gender STRING,
+ip_address STRING,
+mac_id STRING,
+client_name STRING,
+mail_id STRING,
+url_ STRING,
+app_name STRING,
+ph_number NUMERIC,
+credit_card_band STRING,
+card_isu_date DATE,
+cur_code STRING,
+stock_sym STRING,
+valid_card STRING,
+card_type STRING,
+currency_code STRING,
+access_code STRING,
+guid STRING,
+stock_sym_20 STRING,
+emp_role STRING)
+
+---SECOND STEP FOR LOADING DATA FROM LOCAL FILE TO STAGE TBALE
+
+bq load --source_format=CSV --skip_leading_rows=1 usercasestage.CR_CARDS C:\sunandaQT\usecases\real_stage_data.csv
+
+
+---THIRD STEP FOR CREATING TABLE IN HISTORY STAGE
+CREATE TABLE usercasehistory.CR_CARDS
+(cust_id INT64,
+first_name STRING,	
+last_name STRING,
+gender STRING,
+ip_address STRING,
+mac_id STRING,
+client_name STRING,
+mail_id STRING,
+url_ STRING,
+app_name STRING,
+ph_number STRING,
+credit_card_band STRING,
+card_isu_date DATE,
+cur_code BYTES,
+stock_sym STRING,
+valid_card STRING,
+card_type STRING,
+currency_code STRING,
+access_code STRING,
+guid STRING,
+stock_sym_20 STRING,
+emp_role STRING,
+last_ingestion_timestamp TIMESTAMP)
+
+
+
+--FOURTH STEP TO COPY DATA FROM STAGE TO HISTORY
+
+INSERT INTO usercasehistory.CR_CARDS
+select 
+SAFE_cast(cust_id as INT64),
+first_name,	
+last_name,
+gender,
+ip_address,
+mac_id,
+SUBSTRING(client_name,1,length(client_name)-4),
+mail_id,
+split(split(url_,"//")[offset(1)],"/")[offset(0)],
+app_name,
+LPAD(ph_number, 13, "091"),
+credit_card_band,
+CASE
+WHEN SAFE.PARSE_DATE("%m-%d-%Y", card_isu_date) IS NULL
+THEN SAFE.PARSE_DATE("%m/%d/%Y", card_isu_date)
+WHEN SAFE.PARSE_DATE("%m/%d/%Y", card_isu_date) IS NULL
+THEN SAFE.PARSE_DATE("%m/%d/%Y", card_isu_date)
+ELSE SAFE.PARSE_DATE("%m/%d/%Y", card_isu_date)
+END,
+sha256('cur_code'),
+stock_sym,
+valid_card,
+card_type,
+currency_code,
+access_code,
+guid,
+stock_sym_20,
+emp_role,
+CURRENT_TIMESTAMP() AS last_ingestion_timestamp
+from usercasestage.CR_CARDS
+where card_type is not null
+and valid_card = 'TRUE'
+
+
+----HOPE THIS HELPS, TAHNK YOU-------
