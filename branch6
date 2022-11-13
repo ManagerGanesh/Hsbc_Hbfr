@@ -1,1 +1,5 @@
-To test merge
+Nov13 code
+create table(
+id int,
+sal int,
+name string);
